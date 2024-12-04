@@ -1,6 +1,3 @@
--- name: GetAllUsers :many
-SELECT * FROM users;
-
 -- name: AddUser :one
 INSERT INTO users(id, created_at, updated_at, email, is_admin, first_name, last_name, hashed_password)
 VALUES (
@@ -16,3 +13,7 @@ VALUES (
 
 -- name: DeleteAllUsers :exec
 DELETE FROM users;
+
+-- name: GetAllUsers :many
+SELECT * FROM users
+ORDER BY created_at ASC;
