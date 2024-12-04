@@ -2,6 +2,8 @@ package auth
 
 import (
 	"fmt"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -59,4 +61,16 @@ func CheckJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 		return uuid.Nil, err_parsing_id_str
 	}
 	return userId, nil
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	authToken := headers.Get("Authorization")
+	if authToken == "" {
+		return "", fmt.Errorf("no token provided")
+	}
+	token := strings.Split(authToken, " ")
+	if len(token) != 2 {
+		return "", fmt.Errorf("token error")
+	}
+	return token[1], nil
 }
