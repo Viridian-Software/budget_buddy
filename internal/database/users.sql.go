@@ -63,6 +63,15 @@ func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, e
 	return i, err
 }
 
+const deleteAllUsers = `-- name: DeleteAllUsers :exec
+DELETE FROM users
+`
+
+func (q *Queries) DeleteAllUsers(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, deleteAllUsers)
+	return err
+}
+
 const getAllUsers = `-- name: GetAllUsers :many
 SELECT id, created_at, updated_at, email, is_admin, first_name, last_name, hashed_password FROM users
 `

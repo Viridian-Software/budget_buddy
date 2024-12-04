@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func HandleServerError(w http.ResponseWriter, message string, err error) {
-	w.WriteHeader(500)
+func ReturnErrorWithMessage(w http.ResponseWriter, message string, err error, statusCode int) {
+	w.WriteHeader(statusCode)
 	fmt.Fprintf(w, "%v: %v", message, err)
 }

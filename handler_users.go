@@ -34,15 +34,15 @@ func (cfg *apiConfig) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err_decoding_response := decoder.Decode(&new_user_info)
 	if err_decoding_response != nil {
-		custom_errors.HandleServerError(w, "error decoding json", err_decoding_response)
+		custom_errors.ReturnErrorWithMessage(w, "error decoding json", err_decoding_response, 500)
 		return
 	}
 	if !validators.ValidatePassword(new_user_info.Password) {
-		custom_errors.HandleServerError(w, "password does not meet requirements", nil)
+		custom_errors.ReturnErrorWithMessage(w, "password does not meet requirements", nil, 401)
 	}
 	hashed_password, err_hashing_password := auth.HashPassword(new_user_info.Password)
 	if err_hashing_password != nil {
-		custom_errors.HandleServerError(w, "error hashing password", err_hashing_password)
+		custom_errors.ReturnErrorWithMessage(w, "error hashing password", err_hashing_password, 500)
 		return
 	}
 	dbUser, err_adding_user := cfg.database.AddUser(r.Context(), database.AddUserParams{
@@ -52,15 +52,35 @@ func (cfg *apiConfig) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 		HashedPassword: hashed_password,
 	})
 	if err_adding_user != nil {
-		custom_errors.HandleServerError(w, "error adding user", err_adding_user)
+		custom_errors.ReturnErrorWithMessage(w, "error adding user", err_adding_user, 500)
 		return
 	}
-	jsonData, err_marshalling_json := json.Marshal(dbUser)
+	added_user := &User{
+		ID:         dbUser.ID,
+		Email:      dbUser.Email,
+		First_Name: dbUser.FirstName,
+		Last_Name:  dbUser.LastName,
+		Created_At: dbUser.CreatedAt,
+		Updated_At: dbUser.UpdatedAt,
+		Is_Admin:   dbUser.IsAdmin,
+	}
+	jsonData, err_marshalling_json := json.Marshal(added_user)
 	if err_marshalling_json != nil {
-		custom_errors.HandleServerError(w, "error marshalling json", err_marshalling_json)
+		custom_errors.ReturnErrorWithMessage(w, "error marshalling json", err_marshalling_json, 500)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(jsonData)
+}
+
+// Only for use in dev environments to facilitate testing
+func (cfg *apiConfig) ResetUserTable(w http.ResponseWriter, r *http.Request) {
+	if cfg.environment != "dev" {
+		custom_errors.ReturnErrorWithMessage(w, "incorrect environment", nil, 401)
+	}
+	err_resetting_db := cfg.database.DeleteAllUsers(r.Context())
+	if err_resetting_db != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error resetting database", err_resetting_db, 500)
+	}
 }

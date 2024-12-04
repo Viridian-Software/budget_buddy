@@ -14,6 +14,7 @@ import (
 type apiConfig struct {
 	conn_string string
 	database    *database.Queries
+	environment string
 }
 
 func main() {
@@ -24,6 +25,7 @@ func main() {
 	}
 
 	db_url := os.Getenv("CONNECTION_STRING")
+	current_env := os.Getenv("ENVIRONMENT")
 
 	db, err_opening_db := sql.Open("postgres", db_url)
 	if err_opening_db != nil {
@@ -34,6 +36,7 @@ func main() {
 	config := &apiConfig{
 		conn_string: db_url,
 		database:    dbQueries,
+		environment: current_env,
 	}
 
 	mux := http.NewServeMux()

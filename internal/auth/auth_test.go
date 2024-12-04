@@ -42,7 +42,7 @@ func TestValidatePassword(t *testing.T) {
 			t.Fatalf("expected no error while hashing password, got %v", err)
 		}
 
-		err = ValidatePassword(password, hashedPassword)
+		err = CheckPassword(password, hashedPassword)
 		if err != nil {
 			t.Fatalf("expected password to validate, got error: %v", err)
 		}
@@ -56,7 +56,7 @@ func TestValidatePassword(t *testing.T) {
 			t.Fatalf("expected no error while hashing password, got %v", err)
 		}
 
-		err = ValidatePassword(incorrectPassword, hashedPassword)
+		err = CheckPassword(incorrectPassword, hashedPassword)
 		if err == nil {
 			t.Fatalf("expected validation to fail for incorrect password, but it succeeded")
 		}
@@ -66,7 +66,7 @@ func TestValidatePassword(t *testing.T) {
 		password := "securepassword123"
 		malformedHash := "notarealhash"
 
-		err := ValidatePassword(password, malformedHash)
+		err := CheckPassword(password, malformedHash)
 		if err == nil {
 			t.Fatalf("expected validation to fail for a malformed hash, but it succeeded")
 		}
