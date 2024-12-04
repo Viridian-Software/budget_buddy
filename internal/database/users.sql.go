@@ -7,10 +7,64 @@ package database
 
 import (
 	"context"
+	"time"
+
+	"github.com/google/uuid"
 )
 
+const addUser = `-- name: AddUser :one
+INSERT INTO users(id, created_at, updated_at, email, is_admin, first_name, last_name, hashed_password)
+VALUES (
+    gen_random_uuid(),
+    NOW(),
+    NOW(),
+    $1,
+    FALSE,
+    $2,
+    $3,
+    $4
+) RETURNING id, created_at, updated_at, email, is_admin, first_name, last_name
+`
+
+type AddUserParams struct {
+	Email          string
+	FirstName      string
+	LastName       string
+	HashedPassword string
+}
+
+type AddUserRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Email     string
+	IsAdmin   bool
+	FirstName string
+	LastName  string
+}
+
+func (q *Queries) AddUser(ctx context.Context, arg AddUserParams) (AddUserRow, error) {
+	row := q.db.QueryRowContext(ctx, addUser,
+		arg.Email,
+		arg.FirstName,
+		arg.LastName,
+		arg.HashedPassword,
+	)
+	var i AddUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsAdmin,
+		&i.FirstName,
+		&i.LastName,
+	)
+	return i, err
+}
+
 const getAllUsers = `-- name: GetAllUsers :many
-SELECT id, created_at, updated_at, email, is_admin FROM users
+SELECT id, created_at, updated_at, email, is_admin, first_name, last_name, hashed_password FROM users
 `
 
 func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
@@ -28,6 +82,9 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]User, error) {
 			&i.UpdatedAt,
 			&i.Email,
 			&i.IsAdmin,
+			&i.FirstName,
+			&i.LastName,
+			&i.HashedPassword,
 		); err != nil {
 			return nil, err
 		}

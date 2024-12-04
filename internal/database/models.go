@@ -11,9 +11,12 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	Email     string
-	IsAdmin   bool
+	ID             uuid.UUID
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	Email          string
+	IsAdmin        bool
+	FirstName      string
+	LastName       string
+	HashedPassword string
 }

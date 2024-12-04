@@ -42,5 +42,6 @@ func main() {
 		Handler: mux,
 	}
 	mux.HandleFunc("/", ServerRunningHandler)
+	mux.HandleFunc("POST /api/users", config.AddUserHandler)
 	server.ListenAndServe()
 }
