@@ -2,7 +2,7 @@
 CREATE TABLE accounts(
     id UUID PRIMARY KEY,
     account_name TEXT NOT NULL,
-    current_balance MONEY NOT NULL,
+    current_balance NUMERIC NOT NULL,
     account_type TEXT NOT NULL,
     user_id UUID NOT NULL,
     created_at TIMESTAMP NOT NULL,
