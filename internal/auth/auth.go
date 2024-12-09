@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"net/http"
 	"strings"
@@ -19,7 +21,7 @@ func HashPassword(password string) (string, error) {
 	return string(hashed_password), nil
 }
 
-func CheckPassword(password, hashed_password string) error {
+func CheckPassword(hashed_password, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashed_password), []byte(password))
 }
 
@@ -73,4 +75,13 @@ func GetBearerToken(headers http.Header) (string, error) {
 		return "", fmt.Errorf("token error")
 	}
 	return token[1], nil
+}
+
+func MakeRefreshToken() (string, error) {
+	byteSlice := make([]byte, 32)
+	_, err := rand.Read(byteSlice)
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(byteSlice), nil
 }

@@ -129,3 +129,35 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	)
 	return i, err
 }
+
+const setUserAsAdmin = `-- name: SetUserAsAdmin :one
+UPDATE users
+SET is_admin = TRUE
+WHERE id = $1
+RETURNING id, created_at, updated_at, email, is_admin, first_name, last_name
+`
+
+type SetUserAsAdminRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Email     string
+	IsAdmin   bool
+	FirstName string
+	LastName  string
+}
+
+func (q *Queries) SetUserAsAdmin(ctx context.Context, id uuid.UUID) (SetUserAsAdminRow, error) {
+	row := q.db.QueryRowContext(ctx, setUserAsAdmin, id)
+	var i SetUserAsAdminRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsAdmin,
+		&i.FirstName,
+		&i.LastName,
+	)
+	return i, err
+}

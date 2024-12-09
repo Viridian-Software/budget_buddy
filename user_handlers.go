@@ -13,14 +13,15 @@ import (
 )
 
 type User struct {
-	ID         uuid.UUID `json:"id"`
-	Created_At time.Time `json:"created_at"`
-	Updated_At time.Time `json:"updated_at"`
-	Email      string    `json:"email"`
-	Is_Admin   bool      `json:"is_admin"`
-	First_Name string    `json:"first_name"`
-	Last_Name  string    `json:"last_name"`
-	Token      string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	Created_At   time.Time `json:"created_at"`
+	Updated_At   time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Is_Admin     bool      `json:"is_admin"`
+	First_Name   string    `json:"first_name"`
+	Last_Name    string    `json:"last_name"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 type AddUser struct {
@@ -36,7 +37,7 @@ type UserLogin struct {
 }
 
 func (cfg *apiConfig) AddUserHandler(w http.ResponseWriter, r *http.Request) {
-	new_user_info := &AddUser{}
+	new_user_info := AddUser{}
 	decoder := json.NewDecoder(r.Body)
 	err_decoding_response := decoder.Decode(&new_user_info)
 	if err_decoding_response != nil {
@@ -89,6 +90,7 @@ func (cfg *apiConfig) ResetUserTable(w http.ResponseWriter, r *http.Request) {
 	if err_resetting_db != nil {
 		custom_errors.ReturnErrorWithMessage(w, "error resetting database", err_resetting_db, 500)
 	}
+	w.WriteHeader(201)
 }
 
 func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
@@ -104,7 +106,7 @@ func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
 		custom_errors.ReturnErrorWithMessage(w, "", err_retrieving_usr, 401)
 		return
 	}
-	err_checking_password := auth.CheckPassword(loginInfo.Password, dbUser.HashedPassword)
+	err_checking_password := auth.CheckPassword(dbUser.HashedPassword, loginInfo.Password)
 	if err_checking_password != nil {
 		custom_errors.ReturnErrorWithMessage(w, "", err_checking_password, 500)
 		return
@@ -112,15 +114,25 @@ func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
 	newJWT, err_making_jwt := auth.MakeJWT(dbUser.ID, cfg.jwtSecret)
 	if err_making_jwt != nil {
 		custom_errors.ReturnErrorWithMessage(w, "", err_checking_password, 500)
+		return
 	}
+	refreshToken, err_making_refresh := auth.MakeRefreshToken()
+	if err_making_refresh != nil {
+		custom_errors.ReturnErrorWithMessage(w, "", nil, 500)
+	}
+	cfg.database.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:  refreshToken,
+		UserID: dbUser.ID,
+	})
 	loggedInUser := User{
-		ID:         dbUser.ID,
-		Created_At: dbUser.CreatedAt,
-		Updated_At: dbUser.UpdatedAt,
-		Email:      dbUser.Email,
-		First_Name: dbUser.FirstName,
-		Last_Name:  dbUser.LastName,
-		Token:      newJWT,
+		ID:           dbUser.ID,
+		Created_At:   dbUser.CreatedAt,
+		Updated_At:   dbUser.UpdatedAt,
+		Email:        dbUser.Email,
+		First_Name:   dbUser.FirstName,
+		Last_Name:    dbUser.LastName,
+		Token:        newJWT,
+		RefreshToken: refreshToken,
 	}
 	jsonData, err_marshalling_json := json.Marshal(loggedInUser)
 	if err_marshalling_json != nil {
@@ -129,5 +141,4 @@ func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(jsonData)
-
 }
