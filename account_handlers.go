@@ -22,6 +22,11 @@ type Account struct {
 }
 
 func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) {
+	userID, err_authenticating_user := cfg.UserAuthentication(r)
+	if err_authenticating_user != nil {
+		custom_errors.ReturnErrorWithMessage(w, err_authenticating_user.Error(), err_authenticating_user, http.StatusUnauthorized)
+		return
+	}
 	decoder := json.NewDecoder(r.Body)
 	account_to_add := Account{}
 	err_decoding_req := decoder.Decode(&account_to_add)
@@ -29,11 +34,15 @@ func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) 
 		custom_errors.ReturnErrorWithMessage(w, "error decoding json:", err_decoding_req, http.StatusInternalServerError)
 		return
 	}
+	if userID != account_to_add.User_ID {
+		custom_errors.ReturnErrorWithMessage(w, "error with userID", nil, http.StatusUnauthorized)
+		return
+	}
 	dbAccount, err_adding_account := cfg.database.CreateNewAccount(r.Context(), database.CreateNewAccountParams{
 		AccountName:    account_to_add.Account_Name,
 		CurrentBalance: strconv.FormatFloat(account_to_add.Current_Balance, 'f', 10, 64),
 		AccountType:    account_to_add.Account_Type,
-		UserID:         account_to_add.User_ID,
+		UserID:         userID,
 	})
 	if err_adding_account != nil {
 		custom_errors.ReturnErrorWithMessage(w, "could not create new account", err_adding_account, http.StatusInternalServerError)
@@ -50,6 +59,11 @@ func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) GetAllUserAccounts(w http.ResponseWriter, r *http.Request) {
+	_, err_authenticating_user := cfg.UserAuthentication(r)
+	if err_authenticating_user != nil {
+		custom_errors.ReturnErrorWithMessage(w, err_authenticating_user.Error(), err_authenticating_user, http.StatusUnauthorized)
+		return
+	}
 	userID, err_parsing_userID := uuid.Parse(r.PathValue("userID"))
 	if err_parsing_userID != nil {
 		custom_errors.ReturnErrorWithMessage(w, "unauthorized", err_parsing_userID, http.StatusUnauthorized)
