@@ -3,6 +3,7 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -57,6 +58,13 @@ func CheckJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 	idString, err_getting_id_from_token := token.Claims.GetSubject()
 	if err_getting_id_from_token != nil {
 		return uuid.Nil, err_getting_id_from_token
+	}
+	expDate, err_getting_exp_time := token.Claims.GetExpirationTime()
+	if err_getting_exp_time != nil {
+		return uuid.Nil, err_getting_exp_time
+	}
+	if time.Now().After(expDate.Time) {
+		return uuid.Nil, errors.New("token has expired")
 	}
 	userId, err_parsing_id_str := uuid.Parse(idString)
 	if err_parsing_id_str != nil {

@@ -26,7 +26,7 @@ func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) 
 	account_to_add := Account{}
 	err_decoding_req := decoder.Decode(&account_to_add)
 	if err_decoding_req != nil {
-		custom_errors.ReturnErrorWithMessage(w, "error decoding json:", err_decoding_req, 500)
+		custom_errors.ReturnErrorWithMessage(w, "error decoding json:", err_decoding_req, http.StatusInternalServerError)
 		return
 	}
 	dbAccount, err_adding_account := cfg.database.CreateNewAccount(r.Context(), database.CreateNewAccountParams{
@@ -36,12 +36,12 @@ func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) 
 		UserID:         account_to_add.User_ID,
 	})
 	if err_adding_account != nil {
-		custom_errors.ReturnErrorWithMessage(w, "could not create new account", err_adding_account, 500)
+		custom_errors.ReturnErrorWithMessage(w, "could not create new account", err_adding_account, http.StatusInternalServerError)
 		return
 	}
 	jsonData, err_marshalling_json := json.Marshal(dbAccount)
 	if err_marshalling_json != nil {
-		custom_errors.ReturnErrorWithMessage(w, "error creating json", err_marshalling_json, 500)
+		custom_errors.ReturnErrorWithMessage(w, "error creating json", err_marshalling_json, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -50,22 +50,21 @@ func (cfg *apiConfig) AddAccountHandler(w http.ResponseWriter, r *http.Request) 
 }
 
 func (cfg *apiConfig) GetAllUserAccounts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	userID, err_parsing_userID := uuid.Parse(r.URL.Query().Get("userID"))
+	userID, err_parsing_userID := uuid.Parse(r.PathValue("userID"))
 	if err_parsing_userID != nil {
-		custom_errors.ReturnErrorWithMessage(w, "", nil, 401)
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized", err_parsing_userID, http.StatusUnauthorized)
 		return
 	}
 	userAccount, err_retrieving_acc := cfg.database.GetAccountsByUser(r.Context(), userID)
 	if err_retrieving_acc != nil {
-		custom_errors.ReturnErrorWithMessage(w, "", nil, 404)
+		custom_errors.ReturnErrorWithMessage(w, "error retrieving account:", err_retrieving_acc, http.StatusNotFound)
 		return
 	}
 	accountSlice := []Account{}
 	for _, value := range userAccount {
 		num, err := strconv.ParseFloat(value.CurrentBalance, 64)
 		if err != nil {
-			custom_errors.ReturnErrorWithMessage(w, "", nil, 500)
+			custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusInternalServerError)
 			return
 		}
 		accountSlice = append(accountSlice, Account{
@@ -78,10 +77,16 @@ func (cfg *apiConfig) GetAllUserAccounts(w http.ResponseWriter, r *http.Request)
 			Updated_at:      value.UpdatedAt,
 		})
 	}
+	if len(accountSlice) == 0 {
+		custom_errors.ReturnErrorWithMessage(w, "no accounts found", nil, http.StatusNotFound)
+		return
+	}
 	jsonData, err_marshalling_json := json.Marshal(accountSlice)
 	if err_marshalling_json != nil {
-		custom_errors.ReturnErrorWithMessage(w, "", nil, 500)
+		custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusInternalServerError)
+		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(jsonData)
 }

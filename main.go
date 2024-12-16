@@ -46,14 +46,13 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", config.ServerRunningHandler)
 	mux.HandleFunc("POST /api/users", config.AddUserHandler)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
-	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 	mux.HandleFunc("POST /api/accounts", config.AddAccountHandler)
 	mux.HandleFunc("POST /api/admin/reset", config.ResetUserTable)
 	mux.HandleFunc("POST /api/refresh", config.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)
+	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 	server := &http.Server{
 		Addr:    ":" + config.port,
 		Handler: mux,
