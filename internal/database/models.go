@@ -30,6 +30,14 @@ type RefreshToken struct {
 	RevokedAt sql.NullTime
 }
 
+type Transaction struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UserID    uuid.UUID
+	AccountID uuid.UUID
+	Amount    string
+}
+
 type User struct {
 	ID             uuid.UUID
 	CreatedAt      time.Time

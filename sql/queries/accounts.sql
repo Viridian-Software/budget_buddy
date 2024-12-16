@@ -14,3 +14,20 @@ VALUES (
 SELECT * FROM accounts
 WHERE user_id = $1
 ORDER BY created_at ASC;
+
+-- name: VerifyAccountExistence :exec
+SELECT EXISTS (
+    SELECT 1
+    FROM accounts
+    WHERE user_id = $1
+);
+
+-- name: GetAccount :one
+SELECT * FROM accounts
+WHERE id = $1;
+
+-- name: UpdateBalance :one
+UPDATE accounts
+SET current_balance = $2, updated_at = NOW()
+WHERE id = $1
+RETURNING *;
