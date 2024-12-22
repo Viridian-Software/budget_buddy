@@ -177,3 +177,25 @@ func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusInternalServerError)
 	}
 }
+
+func (cfg *apiConfig) DeleteUser(w http.ResponseWriter, r *http.Request) {
+	user_ID, err := cfg.UserAuthentication(r)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
+		return
+	}
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", err, http.StatusInternalServerError)
+		return
+	}
+	if user_ID != user.ID {
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized access", nil, http.StatusUnauthorized)
+		return
+	}
+	if err := cfg.database.DeleteUser(r.Context(), user.ID); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", nil, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
