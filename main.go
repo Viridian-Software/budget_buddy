@@ -47,6 +47,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/users", config.AddUserHandler)
+	mux.HandleFunc("PUT /api/users", config.UpdateUser)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
 	mux.HandleFunc("POST /api/accounts", config.AddAccountHandler)
 	mux.HandleFunc("POST /api/admin/reset", config.ResetUserTable)

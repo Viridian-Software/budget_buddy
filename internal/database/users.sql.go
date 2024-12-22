@@ -130,6 +130,27 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, email, is_admin, first_name, last_name, hashed_password FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsAdmin,
+		&i.FirstName,
+		&i.LastName,
+		&i.HashedPassword,
+	)
+	return i, err
+}
+
 const setUserAsAdmin = `-- name: SetUserAsAdmin :one
 UPDATE users
 SET is_admin = TRUE
@@ -156,6 +177,48 @@ func (q *Queries) SetUserAsAdmin(ctx context.Context, id uuid.UUID) (SetUserAsAd
 		&i.UpdatedAt,
 		&i.Email,
 		&i.IsAdmin,
+		&i.FirstName,
+		&i.LastName,
+	)
+	return i, err
+}
+
+const updateUserInformation = `-- name: UpdateUserInformation :one
+UPDATE users
+SET updated_at = NOW(), email = $1, first_name = $2, last_name = $3
+WHERE id = $4
+RETURNING id, created_at, updated_at, email, first_name, last_name
+`
+
+type UpdateUserInformationParams struct {
+	Email     string
+	FirstName string
+	LastName  string
+	ID        uuid.UUID
+}
+
+type UpdateUserInformationRow struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Email     string
+	FirstName string
+	LastName  string
+}
+
+func (q *Queries) UpdateUserInformation(ctx context.Context, arg UpdateUserInformationParams) (UpdateUserInformationRow, error) {
+	row := q.db.QueryRowContext(ctx, updateUserInformation,
+		arg.Email,
+		arg.FirstName,
+		arg.LastName,
+		arg.ID,
+	)
+	var i UpdateUserInformationRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
 		&i.FirstName,
 		&i.LastName,
 	)

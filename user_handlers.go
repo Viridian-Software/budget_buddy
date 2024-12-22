@@ -38,12 +38,11 @@ type UserLogin struct {
 
 func (cfg *apiConfig) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 	new_user_info := AddUser{}
-	decoder := json.NewDecoder(r.Body)
-	err_decoding_response := decoder.Decode(&new_user_info)
-	if err_decoding_response != nil {
-		custom_errors.ReturnErrorWithMessage(w, "error decoding json", err_decoding_response, http.StatusInternalServerError)
+	if err := json.NewDecoder(r.Body).Decode(&new_user_info); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error decoding json", err, http.StatusInternalServerError)
 		return
 	}
+	// Check that password is acceptable
 	if !validators.ValidatePassword(new_user_info.Password) {
 		custom_errors.ReturnErrorWithMessage(w, "password does not meet requirements", nil, http.StatusUnauthorized)
 	}
@@ -71,14 +70,12 @@ func (cfg *apiConfig) AddUserHandler(w http.ResponseWriter, r *http.Request) {
 		Updated_At: dbUser.UpdatedAt,
 		Is_Admin:   dbUser.IsAdmin,
 	}
-	jsonData, err_marshalling_json := json.Marshal(added_user)
-	if err_marshalling_json != nil {
-		custom_errors.ReturnErrorWithMessage(w, "error marshalling json", err_marshalling_json, http.StatusInternalServerError)
-		return
-	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(jsonData)
+	if err := json.NewEncoder(w).Encode(added_user); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "unable to encode response", err, http.StatusInternalServerError)
+	}
 }
 
 // Only for use in dev environments to facilitate testing
@@ -141,4 +138,42 @@ func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(jsonData)
+}
+
+func (cfg *apiConfig) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	// Authenticate user
+	user_ID, err := cfg.UserAuthentication(r)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "authentication failed", err, http.StatusUnauthorized)
+		return
+	}
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error decoding request", err, http.StatusInternalServerError)
+		return
+	}
+	if user.ID != user_ID {
+		custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusUnauthorized)
+	}
+	updated_user, err := cfg.database.UpdateUserInformation(r.Context(), database.UpdateUserInformationParams{
+		ID:        user.ID,
+		Email:     user.Email,
+		FirstName: user.First_Name,
+		LastName:  user.Last_Name,
+	})
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error updating user information", err, http.StatusInternalServerError)
+		return
+	}
+	response := User{
+		ID:         updated_user.ID,
+		Email:      updated_user.Email,
+		First_Name: updated_user.FirstName,
+		Last_Name:  updated_user.LastName,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusInternalServerError)
+	}
 }

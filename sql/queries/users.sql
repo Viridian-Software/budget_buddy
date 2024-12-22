@@ -27,3 +27,13 @@ UPDATE users
 SET is_admin = TRUE
 WHERE id = $1
 RETURNING id, created_at, updated_at, email, is_admin, first_name, last_name;
+
+-- name: GetUserByID :one
+SELECT * FROM users
+WHERE id = $1;
+
+-- name: UpdateUserInformation :one
+UPDATE users
+SET updated_at = NOW(), email = $1, first_name = $2, last_name = $3
+WHERE id = $4
+RETURNING id, created_at, updated_at, email, first_name, last_name;
