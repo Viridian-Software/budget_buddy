@@ -51,6 +51,7 @@ func main() {
 	mux.HandleFunc("DELETE /api/users", config.DeleteUser)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
 	mux.HandleFunc("POST /api/accounts", config.AddAccountHandler)
+	mux.HandleFunc("DELETE /api/accounts", config.AddAccountHandler)
 	mux.HandleFunc("POST /api/admin/reset", config.ResetUserTable)
 	mux.HandleFunc("POST /api/refresh", config.HandleRefresh)
 	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)

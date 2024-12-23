@@ -104,3 +104,25 @@ func (cfg *apiConfig) GetAllUserAccounts(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(200)
 	w.Write(jsonData)
 }
+
+func (cfg *apiConfig) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+	user_ID, err := cfg.UserAuthentication(r)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
+		return
+	}
+	var account Account
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", err, http.StatusInternalServerError)
+		return
+	}
+	if user_ID != account.User_ID {
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized access", nil, http.StatusUnauthorized)
+		return
+	}
+	if err := cfg.database.DeleteAccount(r.Context(), account.ID); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", nil, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

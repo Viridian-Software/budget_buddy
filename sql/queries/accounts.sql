@@ -31,3 +31,6 @@ UPDATE accounts
 SET current_balance = $2, updated_at = NOW()
 WHERE id = $1
 RETURNING *;
+
+-- name: DeleteAccount :exec
+DELETE FROM accounts WHERE id = $1;
