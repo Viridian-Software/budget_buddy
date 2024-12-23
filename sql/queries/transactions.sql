@@ -8,3 +8,6 @@ INSERT INTO transactions(
     $3,
     $4
 ) RETURNING *;
+
+-- name: DeleteTransaction :exec
+DELETE FROM transactions WHERE id = $1;

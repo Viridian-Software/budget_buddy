@@ -56,6 +56,7 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)
 	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 	mux.HandleFunc("POST /api/transactions", config.CreateTransaction)
+	mux.HandleFunc("DELETE /api/transactions", config.DeleteTransaction)
 	server := &http.Server{
 		Addr:    ":" + config.port,
 		Handler: mux,

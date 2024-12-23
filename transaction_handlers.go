@@ -109,3 +109,25 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 		custom_errors.ReturnErrorWithMessage(w, "unable to encode response", err, http.StatusInternalServerError)
 	}
 }
+
+func (cfg *apiConfig) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
+	user_ID, err := cfg.UserAuthentication(r)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
+		return
+	}
+	var transaction Transaction
+	if err := json.NewDecoder(r.Body).Decode(&transaction); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", err, http.StatusInternalServerError)
+		return
+	}
+	if user_ID != transaction.User_ID {
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized access", nil, http.StatusUnauthorized)
+		return
+	}
+	if err := cfg.database.DeleteTransaction(r.Context(), transaction.ID); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error processing request", nil, http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
