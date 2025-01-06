@@ -95,12 +95,12 @@ func (cfg *apiConfig) UserLogin(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err_decoding_body := decoder.Decode(&loginInfo)
 	if err_decoding_body != nil {
-		custom_errors.ReturnErrorWithMessage(w, "", err_decoding_body, http.StatusUnauthorized)
+		custom_errors.ReturnErrorWithMessage(w, "", err_decoding_body, http.StatusInternalServerError)
 		return
 	}
 	dbUser, err_retrieving_usr := cfg.database.GetUserByEmail(r.Context(), loginInfo.Email)
 	if err_retrieving_usr != nil {
-		custom_errors.ReturnErrorWithMessage(w, "", err_retrieving_usr, http.StatusUnauthorized)
+		custom_errors.ReturnErrorWithMessage(w, "", err_retrieving_usr, http.StatusInternalServerError)
 		return
 	}
 	err_checking_password := auth.CheckPassword(dbUser.HashedPassword, loginInfo.Password)

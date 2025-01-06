@@ -6,9 +6,11 @@ import (
 	"net/http"
 	"os"
 
+	_ "github.com/Viridian-Software/budget_buddy/docs"
 	"github.com/Viridian-Software/budget_buddy/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 type apiConfig struct {
@@ -19,6 +21,14 @@ type apiConfig struct {
 	port        string
 }
 
+//	@title						Budget Buddy API
+//	@version					1.0
+//	@description				API Server for Budget Buddy Application
+//	@host						localhost:8080
+//	@BasePath					/api
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
 func main() {
 	err_loading_env := godotenv.Load()
 
@@ -46,18 +56,30 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
+	// Swagger endpoint
+	mux.HandleFunc("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/swagger/doc.json"),
+	))
+
+	// User endpoints
 	mux.HandleFunc("POST /api/users", config.AddUserHandler)
 	mux.HandleFunc("PUT /api/users", config.UpdateUser)
 	mux.HandleFunc("DELETE /api/users", config.DeleteUser)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
+	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
+
+	// Account endpoints
 	mux.HandleFunc("POST /api/accounts", config.AddAccountHandler)
 	mux.HandleFunc("DELETE /api/accounts", config.AddAccountHandler)
 	mux.HandleFunc("POST /api/admin/reset", config.ResetUserTable)
 	mux.HandleFunc("POST /api/refresh", config.HandleRefresh)
-	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)
-	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 	mux.HandleFunc("POST /api/transactions", config.CreateTransaction)
 	mux.HandleFunc("DELETE /api/transactions", config.DeleteTransaction)
+
+	// Admin endpoints
+	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)
+
 	server := &http.Server{
 		Addr:    ":" + config.port,
 		Handler: mux,
