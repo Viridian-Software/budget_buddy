@@ -56,3 +56,37 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.ExecContext(ctx, deleteTransaction, id)
 	return err
 }
+
+const getAllTransactions = `-- name: GetAllTransactions :many
+SELECT id, created_at, user_id, account_id, amount FROM transactions
+WHERE account_id = $1
+`
+
+func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) ([]Transaction, error) {
+	rows, err := q.db.QueryContext(ctx, getAllTransactions, accountID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Transaction
+	for rows.Next() {
+		var i Transaction
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UserID,
+			&i.AccountID,
+			&i.Amount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

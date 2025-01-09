@@ -131,3 +131,42 @@ func (cfg *apiConfig) DeleteTransaction(w http.ResponseWriter, r *http.Request) 
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (cfg *apiConfig) GetTransactionsForAccount(w http.ResponseWriter, r *http.Request) {
+	_, err := cfg.UserAuthentication(r)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
+		return
+	}
+	var account Account
+	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error retrieving account information", err, http.StatusUnauthorized)
+		return
+	}
+	transactions, err := cfg.database.GetAllTransactions(r.Context(), account.ID)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error retrieving account information", err, http.StatusUnauthorized)
+		return
+	}
+	userTransactions := []Transaction{}
+	for _, values := range transactions {
+		amount, err := strconv.ParseFloat(values.Amount, 64)
+		if err != nil {
+			custom_errors.ReturnErrorWithMessage(w, "error fetching transaction amount", err, http.StatusInternalServerError)
+			continue
+		}
+		userTransactions = append(userTransactions, Transaction{
+			ID:         values.ID,
+			Created_At: values.CreatedAt,
+			User_ID:    values.UserID,
+			Account_ID: values.AccountID,
+			Amount:     amount,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(userTransactions); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "", nil, http.StatusInternalServerError)
+	}
+
+}

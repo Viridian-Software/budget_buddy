@@ -21,14 +21,14 @@ type apiConfig struct {
 	port        string
 }
 
-//	@title						Budget Buddy API
-//	@version					1.0
-//	@description				API Server for Budget Buddy Application
-//	@host						localhost:8080
-//	@BasePath					/api
-//	@securityDefinitions.apikey	BearerAuth
-//	@in							header
-//	@name						Authorization
+// @title						Budget Buddy API
+// @version					1.0
+// @description				API Server for Budget Buddy Application
+// @host						localhost:8080
+// @BasePath					/api
+// @securityDefinitions.apikey	BearerAuth
+// @in							header
+// @name						Authorization
 func main() {
 	err_loading_env := godotenv.Load()
 
@@ -67,11 +67,12 @@ func main() {
 	mux.HandleFunc("PUT /api/users", config.UpdateUser)
 	mux.HandleFunc("DELETE /api/users", config.DeleteUser)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
+	mux.HandleFunc("POST /api/logout", config.LogoutHandler)
 	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 
 	// Account endpoints
 	mux.HandleFunc("POST /api/accounts", config.AddAccountHandler)
-	mux.HandleFunc("DELETE /api/accounts", config.AddAccountHandler)
+	mux.HandleFunc("DELETE /api/accounts", config.DeleteAccountHandler)
 	mux.HandleFunc("POST /api/admin/reset", config.ResetUserTable)
 	mux.HandleFunc("POST /api/refresh", config.HandleRefresh)
 	mux.HandleFunc("POST /api/transactions", config.CreateTransaction)

@@ -105,7 +105,7 @@ func (cfg *apiConfig) GetAllUserAccounts(w http.ResponseWriter, r *http.Request)
 	w.Write(jsonData)
 }
 
-func (cfg *apiConfig) DeleteAccount(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) DeleteAccountHandler(w http.ResponseWriter, r *http.Request) {
 	user_ID, err := cfg.UserAuthentication(r)
 	if err != nil {
 		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
