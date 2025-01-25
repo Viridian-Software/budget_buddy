@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Viridian-Software/budget_buddy/internal/custom_errors"
@@ -41,7 +42,7 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 
 	// Validate transaction user ID
 	if userID != newTransaction.User_ID {
-		custom_errors.ReturnErrorWithMessage(w, "unauthorized user", nil, http.StatusUnauthorized)
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized user", err, http.StatusUnauthorized)
 		return
 	}
 
@@ -125,6 +126,31 @@ func (cfg *apiConfig) DeleteTransaction(w http.ResponseWriter, r *http.Request) 
 		custom_errors.ReturnErrorWithMessage(w, "unauthorized access", nil, http.StatusUnauthorized)
 		return
 	}
+	trans, err := cfg.database.GetTransactionByID(r.Context(), transaction.ID)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "invalid transaction", err, 404)
+		return
+	}
+	acc, err := cfg.database.GetAccount(r.Context(), trans.AccountID)
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "invalid account", err, 404)
+		return
+	}
+	currentAccountBalance, err1 := StringToFloat(acc.CurrentBalance)
+	transactionAmount, err2 := StringToFloat(trans.Amount)
+	if err1 != nil || err2 != nil {
+		custom_errors.ReturnErrorWithMessage(w, "", err, 500)
+		return
+	}
+	newBalance := currentAccountBalance - transactionAmount
+	_, err = cfg.database.UpdateBalance(r.Context(), database.UpdateBalanceParams{
+		ID:             trans.AccountID,
+		CurrentBalance: strconv.FormatFloat(newBalance, 'f', 10, 64),
+	})
+	if err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "unable to update account balance", err, http.StatusInternalServerError)
+		return
+	}
 	if err := cfg.database.DeleteTransaction(r.Context(), transaction.ID); err != nil {
 		custom_errors.ReturnErrorWithMessage(w, "error processing request", nil, http.StatusInternalServerError)
 		return
@@ -138,18 +164,19 @@ func (cfg *apiConfig) GetTransactionsForAccount(w http.ResponseWriter, r *http.R
 		custom_errors.ReturnErrorWithMessage(w, "authentication error", err, http.StatusUnauthorized)
 		return
 	}
-	var account Account
-	if err := json.NewDecoder(r.Body).Decode(&account); err != nil {
-		custom_errors.ReturnErrorWithMessage(w, "error retrieving account information", err, http.StatusUnauthorized)
+	account_id, err_parsing_userID := uuid.Parse(r.PathValue("accountID"))
+	if err_parsing_userID != nil {
+		custom_errors.ReturnErrorWithMessage(w, "unauthorized", err_parsing_userID, http.StatusUnauthorized)
 		return
 	}
-	transactions, err := cfg.database.GetAllTransactions(r.Context(), account.ID)
+	transactions, err := cfg.database.GetAllTransactions(r.Context(), account_id)
 	if err != nil {
 		custom_errors.ReturnErrorWithMessage(w, "error retrieving account information", err, http.StatusUnauthorized)
 		return
 	}
 	userTransactions := []Transaction{}
 	for _, values := range transactions {
+		values.Amount = strings.Trim(values.Amount, "$")
 		amount, err := strconv.ParseFloat(values.Amount, 64)
 		if err != nil {
 			custom_errors.ReturnErrorWithMessage(w, "error fetching transaction amount", err, http.StatusInternalServerError)

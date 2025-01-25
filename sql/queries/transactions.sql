@@ -15,3 +15,7 @@ DELETE FROM transactions WHERE id = $1;
 -- name: GetAllTransactions :many
 SELECT * FROM transactions
 WHERE account_id = $1;
+
+-- name: GetTransactionByID :one
+SELECT * FROM transactions
+WHERE id = $1;

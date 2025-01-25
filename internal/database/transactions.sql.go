@@ -90,3 +90,21 @@ func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) (
 	}
 	return items, nil
 }
+
+const getTransactionByID = `-- name: GetTransactionByID :one
+SELECT id, created_at, user_id, account_id, amount FROM transactions
+WHERE id = $1
+`
+
+func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (Transaction, error) {
+	row := q.db.QueryRowContext(ctx, getTransactionByID, id)
+	var i Transaction
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UserID,
+		&i.AccountID,
+		&i.Amount,
+	)
+	return i, err
+}

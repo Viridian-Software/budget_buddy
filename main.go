@@ -77,6 +77,7 @@ func main() {
 	mux.HandleFunc("POST /api/refresh", config.HandleRefresh)
 	mux.HandleFunc("POST /api/transactions", config.CreateTransaction)
 	mux.HandleFunc("DELETE /api/transactions", config.DeleteTransaction)
+	mux.HandleFunc("GET /api/transactions/{accountID}", config.GetTransactionsForAccount)
 
 	// Admin endpoints
 	mux.HandleFunc("POST /api/revoke", config.HandleRevoke)

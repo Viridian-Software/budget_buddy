@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/Viridian-Software/budget_buddy/internal/auth"
 	"github.com/Viridian-Software/budget_buddy/internal/constants"
@@ -24,4 +26,13 @@ func (cfg *apiConfig) UserAuthentication(r *http.Request) (uuid.UUID, error) {
 		return uuid.Nil, errors.New(constants.JWT_ERROR)
 	}
 	return userID, nil
+}
+
+func StringToFloat(value string) (float64, error) {
+	value = strings.Trim(value, "$")
+	if dollarValue, err := strconv.ParseFloat(value, 64); err != nil {
+		return 0.0, errors.New("unable to properly convert string")
+	} else {
+		return dollarValue, nil
+	}
 }
