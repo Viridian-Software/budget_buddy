@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/Viridian-Software/budget_buddy/internal/auth"
@@ -10,6 +11,7 @@ import (
 	"github.com/Viridian-Software/budget_buddy/internal/database"
 	"github.com/Viridian-Software/budget_buddy/internal/validators"
 	"github.com/google/uuid"
+	"golang.org/x/time/rate"
 )
 
 type User struct {
@@ -220,4 +222,179 @@ func (cfg *apiConfig) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// RateLimiter implements a per-IP rate limiting
+type IPRateLimiter struct {
+	ips map[string]*rate.Limiter
+	mu  *sync.RWMutex
+	r   rate.Limit
+	b   int
+}
+
+func NewIPRateLimiter(r rate.Limit, b int) *IPRateLimiter {
+	return &IPRateLimiter{
+		ips: make(map[string]*rate.Limiter),
+		mu:  &sync.RWMutex{},
+		r:   r,
+		b:   b,
+	}
+}
+
+func (i *IPRateLimiter) GetLimiter(ip string) *rate.Limiter {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+
+	limiter, exists := i.ips[ip]
+	if !exists {
+		limiter = rate.NewLimiter(i.r, i.b)
+		i.ips[ip] = limiter
+	}
+
+	return limiter
+}
+
+type ValidateTokenRequest struct {
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
+
+// Track failed attempts
+type FailedAttempts struct {
+	Count     int
+	LastTry   time.Time
+	IsBlocked bool
+}
+
+var (
+	failedAttempts    = make(map[string]FailedAttempts)
+	failedAttemptsMux sync.RWMutex
+	// Create a rate limiter: 5 requests per minute per IP
+	limiter = NewIPRateLimiter(rate.Limit(5), 5)
+)
+
+const (
+	MAX_FAILED_ATTEMPTS = 5
+	BLOCK_DURATION      = 15 * time.Minute
+)
+
+func (cfg *apiConfig) ValidateTokenHandler(w http.ResponseWriter, r *http.Request) {
+	// Get IP address
+	ip := r.RemoteAddr
+
+	// Apply rate limiting
+	if !limiter.GetLimiter(ip).Allow() {
+		custom_errors.ReturnErrorWithMessage(w, "rate limit exceeded", nil, http.StatusTooManyRequests)
+		return
+	}
+
+	// Check if IP is blocked
+	failedAttemptsMux.RLock()
+	if attempt, exists := failedAttempts[ip]; exists && attempt.IsBlocked {
+		if time.Since(attempt.LastTry) < BLOCK_DURATION {
+			failedAttemptsMux.RUnlock()
+			custom_errors.ReturnErrorWithMessage(w, "too many failed attempts, try again later", nil, http.StatusTooManyRequests)
+			return
+		}
+		// Reset if block duration has passed
+		failedAttemptsMux.RUnlock()
+		failedAttemptsMux.Lock()
+		delete(failedAttempts, ip)
+		failedAttemptsMux.Unlock()
+	} else {
+		failedAttemptsMux.RUnlock()
+	}
+
+	// Validate Content-Type
+	if r.Header.Get("Content-Type") != "application/json" {
+		custom_errors.ReturnErrorWithMessage(w, "invalid content type", nil, http.StatusBadRequest)
+		return
+	}
+
+	// Parse request with size limit
+	var tokenRequest ValidateTokenRequest
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&tokenRequest); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error decoding request", err, http.StatusBadRequest)
+		return
+	}
+
+	// Basic input validation
+	if tokenRequest.Email == "" {
+		custom_errors.ReturnErrorWithMessage(w, "missing required fields", nil, http.StatusBadRequest)
+		return
+	}
+
+	// Get user from database by email
+	dbUser, err := cfg.database.GetUserByEmail(r.Context(), tokenRequest.Email)
+	if err != nil {
+		// Update failed attempts
+		failedAttemptsMux.Lock()
+		attempt := failedAttempts[ip]
+		attempt.Count++
+		attempt.LastTry = time.Now()
+		if attempt.Count >= MAX_FAILED_ATTEMPTS {
+			attempt.IsBlocked = true
+		}
+		failedAttempts[ip] = attempt
+		failedAttemptsMux.Unlock()
+
+		custom_errors.ReturnErrorWithMessage(w, "invalid credentials", nil, http.StatusUnauthorized)
+		return
+	}
+
+	// Validate JWT with expiration check
+	userID, err := cfg.UserAuthentication(r)
+	if err != nil {
+		failedAttemptsMux.Lock()
+		attempt := failedAttempts[ip]
+		attempt.Count++
+		attempt.LastTry = time.Now()
+		if attempt.Count >= MAX_FAILED_ATTEMPTS {
+			attempt.IsBlocked = true
+		}
+		failedAttempts[ip] = attempt
+		failedAttemptsMux.Unlock()
+
+		custom_errors.ReturnErrorWithMessage(w, "invalid token", nil, http.StatusUnauthorized)
+		return
+	}
+
+	// Verify the token belongs to the correct user
+	if userID != dbUser.ID {
+		custom_errors.ReturnErrorWithMessage(w, "token does not match user", nil, http.StatusUnauthorized)
+		return
+	}
+
+	// Reset failed attempts on successful authentication
+	failedAttemptsMux.Lock()
+	delete(failedAttempts, ip)
+	failedAttemptsMux.Unlock()
+
+	// Return user credentials with sanitized data
+	response := User{
+		ID:         dbUser.ID,
+		Email:      dbUser.Email,
+		First_Name: dbUser.FirstName,
+		Last_Name:  dbUser.LastName,
+		Created_At: dbUser.CreatedAt,
+		Updated_At: dbUser.UpdatedAt,
+		Is_Admin:   dbUser.IsAdmin,
+		Token:      tokenRequest.Token,
+	}
+
+	// Set security headers
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("X-Frame-Options", "DENY")
+	w.Header().Set("X-XSS-Protection", "1; mode=block")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Pragma", "no-cache")
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		custom_errors.ReturnErrorWithMessage(w, "error encoding response", err, http.StatusInternalServerError)
+		return
+	}
 }

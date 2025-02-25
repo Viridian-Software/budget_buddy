@@ -35,11 +35,19 @@ func main() {
 	if err_loading_env != nil {
 		log.Fatalf("error loading environment variables: %v", err_loading_env)
 	}
-
-	db_url := os.Getenv("CONNECTION_STRING")
 	current_env := os.Getenv("ENVIRONMENT")
-	secret := os.Getenv("JWTSECRET")
-	server_port := os.Getenv("PORT")
+	var db_url string
+	var secret string
+	var server_port string
+	if current_env == "dev" {
+		db_url = os.Getenv("DEV_CONNECTION_STRING")
+		secret = os.Getenv("JWTSECRET")
+		server_port = os.Getenv("DEV_PORT")
+	} else {
+		db_url = os.Getenv("PROD_CONNECTION_STRING")
+		secret = os.Getenv("JWTSECRET")
+		server_port = os.Getenv("PROD_PORT")
+	}
 
 	db, err_opening_db := sql.Open("postgres", db_url)
 	if err_opening_db != nil {
@@ -67,6 +75,7 @@ func main() {
 	mux.HandleFunc("PUT /api/users", config.UpdateUser)
 	mux.HandleFunc("DELETE /api/users", config.DeleteUser)
 	mux.HandleFunc("POST /api/login", config.UserLogin)
+	mux.HandleFunc("POST /api/autoLogin", config.ValidateTokenHandler)
 	mux.HandleFunc("POST /api/logout", config.LogoutHandler)
 	mux.HandleFunc("GET /api/accounts/{userID}", config.GetAllUserAccounts)
 
