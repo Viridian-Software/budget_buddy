@@ -13,11 +13,12 @@ import (
 )
 
 type Transaction struct {
-	ID         uuid.UUID `json:"id"`
-	Created_At time.Time `json:"created_at"`
-	User_ID    uuid.UUID `json:"user_id"`
-	Account_ID uuid.UUID `json:"account_id"`
-	Amount     float64   `json:"amount"`
+	ID          uuid.UUID `json:"id"`
+	Created_At  time.Time `json:"created_at"`
+	User_ID     uuid.UUID `json:"user_id"`
+	Account_ID  uuid.UUID `json:"account_id"`
+	Amount      float64   `json:"amount"`
+	Description string    `json:"description"`
 }
 
 type TransactionCreated struct {
@@ -95,11 +96,12 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 			Updated_at:      updatedAccount.UpdatedAt,
 		},
 		Transaction_Details: Transaction{
-			ID:         dbTransaction.ID,
-			Created_At: dbTransaction.CreatedAt,
-			User_ID:    dbTransaction.UserID,
-			Account_ID: dbTransaction.AccountID,
-			Amount:     newTransaction.Amount,
+			ID:          dbTransaction.ID,
+			Created_At:  dbTransaction.CreatedAt,
+			User_ID:     dbTransaction.UserID,
+			Account_ID:  dbTransaction.AccountID,
+			Amount:      newTransaction.Amount,
+			Description: newTransaction.Description,
 		},
 	}
 
@@ -183,11 +185,12 @@ func (cfg *apiConfig) GetTransactionsForAccount(w http.ResponseWriter, r *http.R
 			continue
 		}
 		userTransactions = append(userTransactions, Transaction{
-			ID:         values.ID,
-			Created_At: values.CreatedAt,
-			User_ID:    values.UserID,
-			Account_ID: values.AccountID,
-			Amount:     amount,
+			ID:          values.ID,
+			Created_At:  values.CreatedAt,
+			User_ID:     values.UserID,
+			Account_ID:  values.AccountID,
+			Amount:      amount,
+			Description: values.Description.String,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -7,27 +7,30 @@ package database
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/google/uuid"
 )
 
 const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO transactions(
-    id, created_at, user_id, account_id, amount
+    id, created_at, user_id, account_id, amount, description
 ) VALUES (
     $1,
     NOW(),
     $2,
     $3,
-    $4
-) RETURNING id, created_at, user_id, account_id, amount
+    $4,
+    $5
+) RETURNING id, created_at, user_id, account_id, amount, description
 `
 
 type CreateTransactionParams struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	AccountID uuid.UUID
-	Amount    string
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	AccountID   uuid.UUID
+	Amount      string
+	Description sql.NullString
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
@@ -36,6 +39,7 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.UserID,
 		arg.AccountID,
 		arg.Amount,
+		arg.Description,
 	)
 	var i Transaction
 	err := row.Scan(
@@ -44,6 +48,7 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.UserID,
 		&i.AccountID,
 		&i.Amount,
+		&i.Description,
 	)
 	return i, err
 }
@@ -58,7 +63,7 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllTransactions = `-- name: GetAllTransactions :many
-SELECT id, created_at, user_id, account_id, amount FROM transactions
+SELECT id, created_at, user_id, account_id, amount, description FROM transactions
 WHERE account_id = $1
 `
 
@@ -77,6 +82,7 @@ func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) (
 			&i.UserID,
 			&i.AccountID,
 			&i.Amount,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -92,7 +98,7 @@ func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) (
 }
 
 const getTransactionByID = `-- name: GetTransactionByID :one
-SELECT id, created_at, user_id, account_id, amount FROM transactions
+SELECT id, created_at, user_id, account_id, amount, description FROM transactions
 WHERE id = $1
 `
 
@@ -105,6 +111,7 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (Transac
 		&i.UserID,
 		&i.AccountID,
 		&i.Amount,
+		&i.Description,
 	)
 	return i, err
 }

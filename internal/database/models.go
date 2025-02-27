@@ -31,11 +31,12 @@ type RefreshToken struct {
 }
 
 type Transaction struct {
-	ID        uuid.UUID
-	CreatedAt time.Time
-	UserID    uuid.UUID
-	AccountID uuid.UUID
-	Amount    string
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UserID      uuid.UUID
+	AccountID   uuid.UUID
+	Amount      string
+	Description sql.NullString
 }
 
 type User struct {
