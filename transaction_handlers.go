@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -74,10 +75,10 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 
 	// Create a transaction record in the database
 	dbTransaction, err := cfg.database.CreateTransaction(r.Context(), database.CreateTransactionParams{
-		ID:        newTransaction.ID,
-		UserID:    userID,
-		AccountID: newTransaction.Account_ID,
-		Amount:    strconv.FormatFloat(newTransaction.Amount, 'f', 10, 64),
+		UserID:      userID,
+		AccountID:   newTransaction.Account_ID,
+		Amount:      strconv.FormatFloat(newTransaction.Amount, 'f', 10, 64),
+		Description: sql.NullString{String: newTransaction.Description, Valid: true},
 	})
 	if err != nil {
 		custom_errors.ReturnErrorWithMessage(w, "unable to create transaction", err, http.StatusInternalServerError)

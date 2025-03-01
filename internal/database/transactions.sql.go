@@ -16,17 +16,16 @@ const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO transactions(
     id, created_at, user_id, account_id, amount, description
 ) VALUES (
-    $1,
+    gen_random_uuid(),
     NOW(),
+    $1,
     $2,
     $3,
-    $4,
-    $5
+    $4
 ) RETURNING id, created_at, user_id, account_id, amount, description
 `
 
 type CreateTransactionParams struct {
-	ID          uuid.UUID
 	UserID      uuid.UUID
 	AccountID   uuid.UUID
 	Amount      string
@@ -35,7 +34,6 @@ type CreateTransactionParams struct {
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
 	row := q.db.QueryRowContext(ctx, createTransaction,
-		arg.ID,
 		arg.UserID,
 		arg.AccountID,
 		arg.Amount,

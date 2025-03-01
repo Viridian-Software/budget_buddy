@@ -2,12 +2,12 @@
 INSERT INTO transactions(
     id, created_at, user_id, account_id, amount, description
 ) VALUES (
-    $1,
+    gen_random_uuid(),
     NOW(),
+    $1,
     $2,
     $3,
-    $4,
-    $5
+    $4
 ) RETURNING *;
 
 -- name: DeleteTransaction :exec
