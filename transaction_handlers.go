@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Viridian-Software/budget_buddy/internal/custom_errors"
@@ -14,12 +13,14 @@ import (
 )
 
 type Transaction struct {
-	ID          uuid.UUID `json:"id"`
-	Created_At  time.Time `json:"created_at"`
-	User_ID     uuid.UUID `json:"user_id"`
-	Account_ID  uuid.UUID `json:"account_id"`
-	Amount      float64   `json:"amount"`
-	Description string    `json:"description"`
+	ID           uuid.UUID `json:"id"`
+	Created_At   time.Time `json:"created_at"`
+	Updated_At   time.Time `json:"updated_at"`
+	User_ID      uuid.UUID `json:"user_id"`
+	Account_ID   uuid.UUID `json:"account_id"`
+	Amount       float64   `json:"amount"`
+	Description  string    `json:"description"`
+	Is_Recurring bool      `json:"is_recurring"`
 }
 
 type TransactionCreated struct {
@@ -79,6 +80,7 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 		AccountID:   newTransaction.Account_ID,
 		Amount:      strconv.FormatFloat(newTransaction.Amount, 'f', 10, 64),
 		Description: sql.NullString{String: newTransaction.Description, Valid: true},
+		IsRecurring: newTransaction.Is_Recurring,
 	})
 	if err != nil {
 		custom_errors.ReturnErrorWithMessage(w, "unable to create transaction", err, http.StatusInternalServerError)
@@ -97,12 +99,14 @@ func (cfg *apiConfig) CreateTransaction(w http.ResponseWriter, r *http.Request) 
 			Updated_at:      updatedAccount.UpdatedAt,
 		},
 		Transaction_Details: Transaction{
-			ID:          dbTransaction.ID,
-			Created_At:  dbTransaction.CreatedAt,
-			User_ID:     dbTransaction.UserID,
-			Account_ID:  dbTransaction.AccountID,
-			Amount:      newTransaction.Amount,
-			Description: newTransaction.Description,
+			ID:           dbTransaction.ID,
+			Created_At:   dbTransaction.CreatedAt,
+			Updated_At:   dbTransaction.UpdatedAt,
+			User_ID:      dbTransaction.UserID,
+			Account_ID:   dbTransaction.AccountID,
+			Amount:       newTransaction.Amount,
+			Description:  newTransaction.Description,
+			Is_Recurring: newTransaction.Is_Recurring,
 		},
 	}
 
@@ -179,19 +183,21 @@ func (cfg *apiConfig) GetTransactionsForAccount(w http.ResponseWriter, r *http.R
 	}
 	userTransactions := []Transaction{}
 	for _, values := range transactions {
-		values.Amount = strings.Trim(values.Amount, "$")
+		values.Amount = RemoveNonNumeric(values.Amount)
 		amount, err := strconv.ParseFloat(values.Amount, 64)
 		if err != nil {
 			custom_errors.ReturnErrorWithMessage(w, "error fetching transaction amount", err, http.StatusInternalServerError)
 			continue
 		}
 		userTransactions = append(userTransactions, Transaction{
-			ID:          values.ID,
-			Created_At:  values.CreatedAt,
-			User_ID:     values.UserID,
-			Account_ID:  values.AccountID,
-			Amount:      amount,
-			Description: values.Description.String,
+			ID:           values.ID,
+			Created_At:   values.CreatedAt,
+			Updated_At:   values.UpdatedAt,
+			User_ID:      values.UserID,
+			Account_ID:   values.AccountID,
+			Amount:       amount,
+			Description:  values.Description.String,
+			Is_Recurring: values.IsRecurring,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")

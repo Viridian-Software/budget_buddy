@@ -37,6 +37,8 @@ type Transaction struct {
 	AccountID   uuid.UUID
 	Amount      string
 	Description sql.NullString
+	UpdatedAt   time.Time
+	IsRecurring bool
 }
 
 type User struct {

@@ -14,15 +14,17 @@ import (
 
 const createTransaction = `-- name: CreateTransaction :one
 INSERT INTO transactions(
-    id, created_at, user_id, account_id, amount, description
+    id, created_at, user_id, account_id, amount, description, updated_at, is_recurring
 ) VALUES (
     gen_random_uuid(),
     NOW(),
     $1,
     $2,
     $3,
-    $4
-) RETURNING id, created_at, user_id, account_id, amount, description
+    $4,
+    NOW(),
+    $5
+) RETURNING id, created_at, user_id, account_id, amount, description, updated_at, is_recurring
 `
 
 type CreateTransactionParams struct {
@@ -30,6 +32,7 @@ type CreateTransactionParams struct {
 	AccountID   uuid.UUID
 	Amount      string
 	Description sql.NullString
+	IsRecurring bool
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
@@ -38,6 +41,7 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		arg.AccountID,
 		arg.Amount,
 		arg.Description,
+		arg.IsRecurring,
 	)
 	var i Transaction
 	err := row.Scan(
@@ -47,6 +51,8 @@ func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionPa
 		&i.AccountID,
 		&i.Amount,
 		&i.Description,
+		&i.UpdatedAt,
+		&i.IsRecurring,
 	)
 	return i, err
 }
@@ -61,7 +67,7 @@ func (q *Queries) DeleteTransaction(ctx context.Context, id uuid.UUID) error {
 }
 
 const getAllTransactions = `-- name: GetAllTransactions :many
-SELECT id, created_at, user_id, account_id, amount, description FROM transactions
+SELECT id, created_at, user_id, account_id, amount, description, updated_at, is_recurring FROM transactions
 WHERE account_id = $1
 `
 
@@ -81,6 +87,8 @@ func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) (
 			&i.AccountID,
 			&i.Amount,
 			&i.Description,
+			&i.UpdatedAt,
+			&i.IsRecurring,
 		); err != nil {
 			return nil, err
 		}
@@ -96,7 +104,7 @@ func (q *Queries) GetAllTransactions(ctx context.Context, accountID uuid.UUID) (
 }
 
 const getTransactionByID = `-- name: GetTransactionByID :one
-SELECT id, created_at, user_id, account_id, amount, description FROM transactions
+SELECT id, created_at, user_id, account_id, amount, description, updated_at, is_recurring FROM transactions
 WHERE id = $1
 `
 
@@ -110,6 +118,8 @@ func (q *Queries) GetTransactionByID(ctx context.Context, id uuid.UUID) (Transac
 		&i.AccountID,
 		&i.Amount,
 		&i.Description,
+		&i.UpdatedAt,
+		&i.IsRecurring,
 	)
 	return i, err
 }

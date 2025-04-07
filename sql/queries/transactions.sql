@@ -1,13 +1,15 @@
 -- name: CreateTransaction :one
 INSERT INTO transactions(
-    id, created_at, user_id, account_id, amount, description
+    id, created_at, user_id, account_id, amount, description, updated_at, is_recurring
 ) VALUES (
     gen_random_uuid(),
     NOW(),
     $1,
     $2,
     $3,
-    $4
+    $4,
+    NOW(),
+    $5
 ) RETURNING *;
 
 -- name: DeleteTransaction :exec
